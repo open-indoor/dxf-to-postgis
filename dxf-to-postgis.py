@@ -30,27 +30,30 @@ def to_geojson(pool, lock, floor_gdf):
         "SELECT geometry AS geom, layer, paperspace, subclasses, linetype, entityhandle, text, level, geom_type, plan, index FROM bim2",
         con = engine
     )
-    data_gdf[
-        data_gdf["layer"]=="ABY_Zone_ZIND"
-        ].to_file(
-            os.path.splitext(floor_gdf["raw_geojson"][0])[0] + "_ABY_Zone_ZIND.geojson",
-            driver='GeoJSON',
-            encoding='utf-8'
-        )
-    data_gdf[
-        data_gdf["layer"]=="ABY_Zone_ZCOM"
-        ].to_file(
-            os.path.splitext(floor_gdf["raw_geojson"][0])[0] + "_ABY_Zone_ZCOM.geojson",
-            driver='GeoJSON',
-            encoding='utf-8'
-        )
-    data_gdf[
-        data_gdf["layer"]=="Texte_Pièces"
-        ].to_file(
-            os.path.splitext(floor_gdf["raw_geojson"][0])[0] + "_Texte_Pieces.geojson",
-            driver='GeoJSON',
-            encoding='utf-8'
-        )
+    if "layer:room" in floor_gdf.iloc[0]:
+        data_gdf[
+            data_gdf["layer"]==floor_gdf["layer:room"][0]
+            ].to_file(
+                os.path.splitext(floor_gdf["raw_geojson"][0])[0] + "_room.geojson",
+                driver='GeoJSON',
+                encoding='utf-8'
+            )
+    if "layer:corridor" in floor_gdf.iloc[0]:
+        data_gdf[
+            data_gdf["layer"]==floor_gdf["layer:corridor"][0]
+            ].to_file(
+                os.path.splitext(floor_gdf["raw_geojson"][0])[0] + "_corridor.geojson",
+                driver='GeoJSON',
+                encoding='utf-8'
+            )
+    if "layer:room_name" in floor_gdf.iloc[0]:
+        data_gdf[
+            data_gdf["layer"]==floor_gdf["layer:room_name"][0]
+            ].to_file(
+                os.path.splitext(floor_gdf["raw_geojson"][0])[0] + "_room_name.geojson",
+                driver='GeoJSON',
+                encoding='utf-8'
+            )
    
 
 def dxf_to_postgis(pool, lock, floor_gdf):
@@ -98,7 +101,7 @@ def dxf_to_postgis(pool, lock, floor_gdf):
 
 
 
-    minx, miny, maxx, maxy = autocad_plan_gdf[autocad_plan_gdf["Layer"]==floor_gdf["Layer"][0]].total_bounds
+    minx, miny, maxx, maxy = autocad_plan_gdf[autocad_plan_gdf["Layer"]==floor_gdf["layer:bound"][0]].total_bounds
     autocad_gcp_ungeoref_gdf = geopandas.GeoDataFrame.from_features(
         {
             "type": "FeatureCollection",
@@ -141,7 +144,7 @@ def dxf_to_postgis(pool, lock, floor_gdf):
             -gcp {ungeoref_x[2]} {ungeoref_y[2]}  {georef_x[2]} {georef_y[2]}"""
 
     print("cmd:", flush=True)
-    print(cmd, flush=True)
+    # print(cmd, flush=True)
     subprocess.run(cmd, shell=True)
 
 
@@ -166,6 +169,7 @@ def main():
                 },
                 crs="EPSG:4326"
             )
+            print(gdf.iloc[0], flush=True)
             # dxf_to_postgis(pool, lock, gdf)
             to_geojson(pool, lock, gdf)
 
