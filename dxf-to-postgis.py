@@ -24,6 +24,35 @@ engine=create_engine(
 def _to_2d(x, y, z = None):
     return tuple(filter(None, [x, y]))
 
+def to_geojson(pool, lock, floor_gdf):
+
+    data_gdf = geopandas.read_postgis(
+        "SELECT geometry AS geom, layer, paperspace, subclasses, linetype, entityhandle, text, level, geom_type, plan, index FROM bim2",
+        con = engine
+    )
+    data_gdf[
+        data_gdf["layer"]=="ABY_Zone_ZIND"
+        ].to_file(
+            os.path.splitext(floor_gdf["raw_geojson"][0])[0] + "_ABY_Zone_ZIND.geojson",
+            driver='GeoJSON',
+            encoding='utf-8'
+        )
+    data_gdf[
+        data_gdf["layer"]=="ABY_Zone_ZCOM"
+        ].to_file(
+            os.path.splitext(floor_gdf["raw_geojson"][0])[0] + "_ABY_Zone_ZCOM.geojson",
+            driver='GeoJSON',
+            encoding='utf-8'
+        )
+    data_gdf[
+        data_gdf["layer"]=="Texte_Pièces"
+        ].to_file(
+            os.path.splitext(floor_gdf["raw_geojson"][0])[0] + "_Texte_Pieces.geojson",
+            driver='GeoJSON',
+            encoding='utf-8'
+        )
+   
+
 def dxf_to_postgis(pool, lock, floor_gdf):
     # Read AutoCAD file
     print("Read AutoCAD file:", floor_gdf["dxf"][0], flush=True)
@@ -95,6 +124,8 @@ def dxf_to_postgis(pool, lock, floor_gdf):
     (ungeoref_x, ungeoref_y) = autocad_gcp_ungeoref_gps_gdf["geometry"][0].coords.xy
     (georef_x, georef_y) = floor_gdf["geometry"][0].coords.xy
 
+    # update geojson
+
         # -f 'GeoJSON' /data/ISIMA/floor_000/ISIMA_RDC.geojson \
     cmd = f"""ogr2ogr \
             -progress \
@@ -109,15 +140,10 @@ def dxf_to_postgis(pool, lock, floor_gdf):
             -gcp {ungeoref_x[1]} {ungeoref_y[1]}  {georef_x[1]} {georef_y[1]} \
             -gcp {ungeoref_x[2]} {ungeoref_y[2]}  {georef_x[2]} {georef_y[2]}"""
 
-    # autocad_gps_gdf.to_file(floor_gdf["raw_geojson"][0], driver='GeoJSON', encoding='utf-8')
-    # data_gdf = geopandas.read_postgis("SELECT * FROM bim2", con = engine)
-    # data_gdf[data_gdf["Layer"]=="ABY_Zone_ZIND"].to_file(os.path.splitext(floor_gdf["raw_geojson"][0]) + "_ABY_Zone_ZIND.geojson", driver='GeoJSON', encoding='utf-8')
-    # data_gdf[data_gdf["Layer"]=="ABY_Zone_ZCOM"].to_file(os.path.splitext(floor_gdf["raw_geojson"][0]) + "_ABY_Zone_ZCOM.geojson", driver='GeoJSON', encoding='utf-8')
-
     print("cmd:", flush=True)
     print(cmd, flush=True)
     subprocess.run(cmd, shell=True)
-   
+
 
 def main():
     print("Starting process...")
@@ -140,7 +166,8 @@ def main():
                 },
                 crs="EPSG:4326"
             )
-            dxf_to_postgis(pool, lock, gdf)
+            # dxf_to_postgis(pool, lock, gdf)
+            to_geojson(pool, lock, gdf)
 
 if __name__ == "__main__":
     main()
